@@ -34,21 +34,23 @@ For example,
 
 File path can be a absolute path or a relative path. If it is a relative path, markcode will use the document file's directory as the default current directory. The current directory can be set as an option to markcode.
 
-#### region link
+##### region link
 
-    <!--- {filepath:region regionname} --->
+    <!--- {filepath:region} --->
 
-#### line range link
+##### line range link
 
-    <!---{filepath:line line1# line2#}--->
+    <!---{filepath:line1 line2}--->
 
-#### line link
+##### line link
 
-    <!---{filepath:line line#}--->
+    <!---{filepath:line}--->
 
-line related links are not recommended since source changes will most likely break the links. 
+line related links are not recommended since source code changes will most likely break the links. 
 
 ### namespace link
+
+    <!---{namespace}--->
 
 ### type link
 
