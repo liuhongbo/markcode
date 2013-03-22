@@ -24,7 +24,7 @@ markcode is embedded in the html comments that wont affect the final markdown
 
 Triple dashes are recommended since some markdown engines like [pandoc][pandoc] will ignore triple  dash comment.
 
-### file link
+### 1. file link
 
     <!---{filepath}--->
 
@@ -34,19 +34,31 @@ For example,
 
 File path can be a absolute path or a relative path. If it is a relative path, markcode will use the document file's directory as the default current directory. The current directory can be set as an option to markcode.
 
-##### region link
+##### 1.1 region link
 
     <!--- {filepath:region} --->
 
-##### line range link
+##### 1.2 line range link
 
     <!---{filepath:line1 line2}--->
 
-##### line link
+##### 1.3 line link
 
     <!---{filepath:line}--->
 
 line related links are not recommended since source code changes will most likely break the links. 
+
+##### 1.4 function link
+    
+	<!---{filepath>function}--->
+
+###### 1.4.1 function line link
+
+    <!---{filepath>function:line}--->
+
+###### 1.4.2 function line range link
+	
+	<!---{filepath>function:line1 line2}--->
 
 ### namespace link
 
