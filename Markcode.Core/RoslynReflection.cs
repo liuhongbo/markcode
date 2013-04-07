@@ -107,6 +107,8 @@ namespace Markcode.Core
                         }
                     }
                     break;
+                case SymbolKind.Method:
+                    break;
             }
 
             return text;

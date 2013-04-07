@@ -60,8 +60,18 @@ namespace Markcode.Core
             }
         }
 
+        //private bool SkipLine(string path, string line)
+        //{
+
+        //}
+
         public void TransformFile(string path, string newPath = null)
         {
+            if (string.IsNullOrEmpty(path))
+                throw new ArgumentNullException(path);
+
+            string ext = Path.GetExtension(path);
+
             List<string> newLines = new List<string>();
             if (string.IsNullOrEmpty(newPath)) newPath = path;
 
@@ -69,36 +79,116 @@ namespace Markcode.Core
 
             Regex r = new Regex(pattern);
             bool transformed = false;
-            bool skipcode = false;
+            bool skipCode = false;
+            bool skippingCode = false;
 
             foreach (string line in File.ReadLines(path))
             {
-                if (skipcode)
+                if (skipCode)
                 {
-                    if (!line.StartsWith("    "))
+                    switch (ext)
                     {
-                        if (!Regex.IsMatch(line, @"^<!-{2,}.*\{markcodeend\}.*-{2,}>$"))
+                        case ".md":
+                        case ".markdown":
+                        case ".mdown":
+                            if (!line.StartsWith("    "))
+                            {
+                                if (Regex.IsMatch(line, @"^<!-{2,}.*\{\?endmarkcode\}.*-{2,}>$"))
+                                {
+                                    skipCode = false;
+                                    continue;
+                                }
+                                else if (line != string.Empty)
+                                {
+                                    skipCode = false;
+                                }
+                            }
+                            break;
+                        case ".creole":
+                            if (skippingCode)
+                            {
+                                if (Regex.IsMatch(line, @"^\{\{\{\x20*$"))
+                                {
+                                    skippingCode = false;
+                                }
+                            }
+                            else
+                            {
+                                if (Regex.IsMatch(line, @"^<!-{2,}.*\{\?endmarkcode\}.*-{2,}>$"))
+                                {
+                                    skipCode = false;
+                                    continue;
+                                }
+                                else if (Regex.IsMatch(line, @"^}}}\x20*$"))
+                                {
+                                    skippingCode = true;
+                                }
+                                else if (line != string.Empty)
+                                {
+                                    skipCode = false;
+                                }
+                            }
+                            break;
+                    }                    
+                }
+
+                if (!skipCode)
+                {
+                    newLines.Add(line);
+
+                    Match m = r.Match(line);
+                    if (m.Success && (m.Groups.Count == 2))
+                    {
+                        string link = m.Groups[1].Value;
+                        string codeText = TransformLink(link);
+                        if (!string.IsNullOrEmpty(codeText))
                         {
-                            skipcode = false;
+                            switch (ext)
+                            {
+                                case ".md":
+                                case ".markdown":
+                                case ".mdown":
+                                    newLines.Add("");
+                                    break;
+                                case ".creole":
+                                    newLines.Add("{{{");
+                                    break;
+                            }
+
+                            foreach (string s in codeText.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).AsEnumerable())
+                            {
+                                switch (ext)
+                                {
+                                    case ".md":
+                                    case ".markdown":
+                                    case ".mdown":
+                                        newLines.Add("    " + s);
+                                        break;
+                                    case ".creole":
+                                        newLines.Add(s);
+                                        break;
+                                }
+                            }
+
+                            switch (ext)
+                            {
+                                case ".md":
+                                case ".markdown":
+                                case ".mdown":
+                                    newLines.Add("");
+                                    break;
+                                case ".creole":
+                                    newLines.Add("}}}");
+                                    break;
+                            }
+
+                            transformed = true;
+                            skipCode = true;
+                            skippingCode = false;
+                            newLines.Add(@"<!---{?endmarkcode}--->");
                         }
                     }
                 }
-
-                if (!skipcode)
-                    newLines.Add(line);
-
-                Match m = r.Match(line);
-                if (m.Success && (m.Groups.Count == 2))
-                {
-                    string link = m.Groups[1].Value;
-                    foreach (string s in TransformLink(link).Split(new char[]{'\r','\n'}, StringSplitOptions.RemoveEmptyEntries).AsEnumerable())
-                    {
-                        newLines.Add("    "+s);
-                        transformed = true;
-                        skipcode = true;
-                    }
-                    newLines.Add(@"<!---{endmarkcode}--->");
-                }                
             }
 
             if (transformed)

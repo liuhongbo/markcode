@@ -2,7 +2,7 @@
 
 ------------------------
 
-Mark the source code in markdown document as a link and use markcode as a tool to create/update the source code automatically
+Mark the source code in markdown document as a link and use markcode as a tool to create/update the source code automatically. This file README.md is also used to test and demostrate the use of markcode.
 
 ## Purpose
 
@@ -18,9 +18,11 @@ Markcode works for the wiki documents that have a lot of references to source co
 
 ## Syntax
 
-markcode link is embedded in the html comments that wont affect the final markup
+markcode link is coded in the html comments that wont affect the final markup display.
 
-    <!---{markcode link}--->
+    <!---{markcode-link}--->
+
+The comment itself should be a seperated paragraph which means there should be a blank line after the comment.
 
 Triple dashes are recommended since some markup engines like [pandoc][pandoc] will ignore triple  dash comment.
 
@@ -34,53 +36,40 @@ For example,
 
 File path can be a absolute path or a relative path. If it is a relative path, markcode will use the document file's directory as the default current directory. The current directory can be set as an option to markcode.
 
-##### 1.1 region link
-
-    <!--- {filepath#region} --->
-
-##### 1.2 line range link
-
-    <!---{filepath:line1 line2}--->
-
-##### 1.3 line link
-
-    <!---{filepath:line}--->
-
-line related links are not recommended since source code changes will most likely break the links. 
-
-##### 1.4 function link
+### 2. file function link
     
 	<!---{filepath>function}--->
 
-###### 1.4.1 function line link
 
-    <!---{filepath>function:line}--->
+### 3. identifier link
 
-###### 1.4.2 function line range link
-	
-	<!---{filepath>function:line1 line2}--->
+    <!---{fully-qualified-name-of-identifier}--->
 
-### namespace link
+identifier could be namespace, type, memeber, variable etc. For example,
 
-    <!---{namespace}--->
+    <!---{Markcode.Core.RoslynReflection.GetText}--->
 
-### type link
+<!---{Markcode.Core.RoslynReflection.GetText}--->
 
-    <!---{fully-qualified-name-of-type}--->
+### 4. selection
 
-The link is the fully qualified name of the Type, including the namespace of the Type but not the assembly.
+selection is used to select part of the souce code.
 
-#### type region link
+### 4.1. region selection
 
-    <!---{fully-qualified-name-of-type#region}--->
+    <!--- {markcode-link#region} --->
 
-### member link
+you can use region to select part of the code. region selection can be used with file link or identifier link.
 
-    <!---{fully-qualified-name-of-member}--->	
+### 4.2. line selection
 
-#### member region link
+    <!---{markcode-link:line}--->
 
-    <!---{fully-qualified-name-of-member#region}--->
+### 4.3. line range selection
+
+    <!---{markcode-link:line1 line2}--->
+
+line related links are not recommended since source code changes will most likely break the links. 
 
 ## How it works
 
@@ -94,6 +83,9 @@ The link is the fully qualified name of the Type, including the namespace of the
     using System.IO;
     namespace Markcode.Core
     {
+        /// <summary>
+        /// markcode transform interface
+        /// </summary>
         public interface IMarkcodeTransform
         {
             void TransformSolution(string searchPattern = "*");
@@ -104,6 +96,7 @@ The link is the fully qualified name of the Type, including the namespace of the
             string TransformLink(string link);
         }
     }
-<!---{endmarkcode}--->
+
+<!---{?endmarkcode}--->
 
 [pandoc]: http://johnmacfarlane.net/pandoc/ "a universal document converter"

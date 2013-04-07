@@ -7,6 +7,9 @@ using System.IO;
 
 namespace Markcode.Core
 {
+    /// <summary>
+    /// markcode transform interface
+    /// </summary>
     public interface IMarkcodeTransform
     {
         void TransformSolution(string searchPattern = "*");
