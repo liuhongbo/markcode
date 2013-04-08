@@ -51,6 +51,64 @@ identifier could be namespace, type, memeber, variable etc. For example,
 
 <!---{Markcode.Core.RoslynReflection.GetText}--->
 
+            public string GetText(string fullName)
+            {
+                string[] names = fullName.Trim().Split('.');
+                if (names.Length == 0) return null;
+                Symbol s = null;
+                foreach (string name in names)
+                {
+                    s = GetSymbol(name, s);
+                    if (s == null) return null;
+                }
+                if (s == null) return null;
+                string text = string.Empty;
+                switch (s.Kind)
+                {
+                    case SymbolKind.NamedType:
+                        NamedTypeSymbol ts = (s as NamedTypeSymbol);
+                        if (ts.Locations.Any(l => l.IsInSource))
+                        {
+                            foreach (SyntaxNode node in ts.DeclaringSyntaxNodes)
+                            {
+                                text += node.ToFullString();
+                                text += "\r\n";
+                            }
+                        }
+                        else
+                        {
+                        }                    
+                        break;
+                    case SymbolKind.Method:
+                        MethodSymbol ms = (s as MethodSymbol);
+                        if (ms.Locations.Any(l => l.IsInSource))
+                        {
+                            foreach (SyntaxNode node in ms.DeclaringSyntaxNodes)
+                            {
+                                text += node.ToFullString();
+                                text += "\r\n";
+                            }
+                        }
+                        else
+                        {
+                        }
+                        //foreach (Location location in ms.Locations)
+                        //{
+                        //    if (location.IsInSource)
+                        //    {
+                        //        text += location.SourceTree.GetText();
+                        //        text += "\r\n";
+                        //    }
+                        //    else if (location.IsInMetadata)
+                        //    {
+                        //    }
+                        //}
+                        break;
+                }
+                return text;
+            }
+
+<!---{?endmarkcode}--->
 ### 4. selection
 
 selection is used to select part of the souce code.
@@ -71,18 +129,12 @@ you can use region to select part of the code. region selection can be used with
 
 line related links are not recommended since source code changes will most likely break the links. 
 
+## Markcode command tool
+
 ## How it works
 
 <!---{Markcode.Core.IMarkcodeTransform}--->
 
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
-    using System.Threading.Tasks;
-    using System.IO;
-    namespace Markcode.Core
-    {
         /// <summary>
         /// markcode transform interface
         /// </summary>
@@ -91,11 +143,11 @@ line related links are not recommended since source code changes will most likel
             void TransformSolution(string searchPattern = "*");
             void TransformDirectory(string path, string searchPattern = "*", SearchOption searchOption = SearchOption.AllDirectories);
             void TransformFile(string path, string newPath = null);
+            string TransformLink(string link);
             string TransformString(string s);
             void TransformStream(StreamReader reader, StreamWriter writer); 
-            string TransformLink(string link);
+            
         }
-    }
 
 <!---{?endmarkcode}--->
 

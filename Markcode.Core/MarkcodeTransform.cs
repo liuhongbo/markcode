@@ -12,10 +12,14 @@ namespace Markcode.Core
     {
         private ICodeReflection _reflector;
 
+        #region Ctor
+
         public MarkcodeTransform(ICodeReflection reflector)
         {
             _reflector = reflector;
         }
+
+        #endregion
 
         public void TransformSolution(string searchPattern = "*")
         {
@@ -29,41 +33,14 @@ namespace Markcode.Core
             //}
             TransformDirectory(_reflector.GetSolutionDirectory(), searchPattern);
         }
-
-        //http://social.msdn.microsoft.com/Forums/en-US/regexp/thread/7123e7fa-97c8-48c6-8761-737f4b01b25b
-        public string GetRegexPattern(string searchPattern)
-        {
-            // escape regex metacharacters
-            string pattern = Regex.Escape(searchPattern);
-
-            // anchor for exact match (otherwise it'll yield partial matches)
-            // replace desired characters (note escaped metacharacters)
-            pattern = "^"    // anchor beginning of string
-                        + pattern.Replace(@"\?", ".")     // single char
-                                .Replace('_', '.')         // single char
-                                .Replace(@"\*", ".*")     // wildcard
-                        + "$";    // anchor end of string
-
-            // this replaces multiple dots with a quantifier, for example "..." => ".{3}"
-            // it's an optional step to enhance the regex pattern but the behavior is the same
-            // unless someone will see the pattern it can be skipped as there's no value added
-            pattern = Regex.Replace(pattern, @"(?<!\\)(\.){2,}", m => String.Concat(".{", m.Length, "}"));
-
-            return pattern;
-        }
-
+        
         public void TransformDirectory(string path, string searchPattern = "*", SearchOption searchOption = SearchOption.AllDirectories)
         {
             foreach (string file in Directory.EnumerateFiles(path, searchPattern, searchOption))
             {
                 TransformFile(file);
             }
-        }
-
-        //private bool SkipLine(string path, string line)
-        //{
-
-        //}
+        }        
 
         public void TransformFile(string path, string newPath = null)
         {
@@ -216,7 +193,32 @@ namespace Markcode.Core
 
         public void TransformStream(StreamReader reader, StreamWriter writer)
         {
-        }       
+        }
 
+        #region Utilities
+
+        //http://social.msdn.microsoft.com/Forums/en-US/regexp/thread/7123e7fa-97c8-48c6-8761-737f4b01b25b
+        private string GetRegexPattern(string searchPattern)
+        {
+            // escape regex metacharacters
+            string pattern = Regex.Escape(searchPattern);
+
+            // anchor for exact match (otherwise it'll yield partial matches)
+            // replace desired characters (note escaped metacharacters)
+            pattern = "^"    // anchor beginning of string
+                        + pattern.Replace(@"\?", ".")     // single char
+                                .Replace('_', '.')         // single char
+                                .Replace(@"\*", ".*")     // wildcard
+                        + "$";    // anchor end of string
+
+            // this replaces multiple dots with a quantifier, for example "..." => ".{3}"
+            // it's an optional step to enhance the regex pattern but the behavior is the same
+            // unless someone will see the pattern it can be skipped as there's no value added
+            pattern = Regex.Replace(pattern, @"(?<!\\)(\.){2,}", m => String.Concat(".{", m.Length, "}"));
+
+            return pattern;
+        }
+
+        #endregion
     }
 }

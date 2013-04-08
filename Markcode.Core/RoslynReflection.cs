@@ -94,20 +94,31 @@ namespace Markcode.Core
             {
                 case SymbolKind.NamedType:
                     NamedTypeSymbol ts = (s as NamedTypeSymbol);
-                    foreach (Location location in ts.Locations)
+                    if (ts.Locations.Any(l => l.IsInSource))
                     {
-                        if (location.IsInSource)
+                        foreach (SyntaxNode node in ts.DeclaringSyntaxNodes)
                         {
-                            text += location.SourceTree.GetText();
+                            text += node.ToFullString();
                             text += "\r\n";
                         }
-                        else if (location.IsInMetadata)
-                        {
-                         
-                        }
                     }
+                    else
+                    {
+                    }                    
                     break;
                 case SymbolKind.Method:
+                    MethodSymbol ms = (s as MethodSymbol);
+                    if (ms.Locations.Any(l => l.IsInSource))
+                    {
+                        foreach (SyntaxNode node in ms.DeclaringSyntaxNodes)
+                        {
+                            text += node.ToFullString();
+                            text += "\r\n";
+                        }
+                    }
+                    else
+                    {
+                    }                    
                     break;
             }
 
