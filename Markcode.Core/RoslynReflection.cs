@@ -2,12 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.IO;
 using System.Threading.Tasks;
 using Roslyn.Compilers;
 using Roslyn.Compilers.CSharp;
 using Roslyn.Services;
 using Roslyn.Services.CSharp;
+using Roslyn.Services.Formatting;
+using Roslyn.Services.MetadataAsSource;
 
 namespace Markcode.Core
 {
@@ -76,14 +79,54 @@ namespace Markcode.Core
         public string GetText(string fullName)
         {
             string[] names = fullName.Trim().Split('.');
+            string param = null;
+            string selector = null;
+            string selection = null;
             if (names.Length == 0) return null;
+            
+            string lastName = names[names.Length - 1];
+            string pattern = @"^(?<name>\w+)(\((?<params>.+)\))*((?<selector>[#:])(?<selection>.+))*\s*$";
+
+            Match m = Regex.Match(lastName, pattern);
+            if (m.Success)
+            {
+                if (m.Groups["name"].Success)
+                {
+                    lastName = m.Groups["name"].Value;
+                }
+
+                if (m.Groups["params"].Success)
+                {
+                    param = m.Groups["params"].Value;
+                }
+
+                if (m.Groups["selector"].Success)
+                {
+                    selector = m.Groups["selector"].Value;
+                }
+
+                if (m.Groups["selection"].Success)
+                {
+                    selection = m.Groups["selection"].Value;
+                }
+            }          
+            
 
             Symbol s = null;
 
-            foreach (string name in names)
+            for (int i = 0; i < names.Length - 1; i++)
             {
-                s = GetSymbol(name, s);
+                s = GetSymbol(s, names[i]);
                 if (s == null) return null;
+            }
+
+            if (string.IsNullOrEmpty(param))
+            {
+                s = GetSymbol(s, names[names.Length - 1]);
+            }
+            else
+            {
+                s = GetSymbol(s, names[names.Length - 1], param);
             }
 
             if (s == null) return null;
@@ -92,27 +135,44 @@ namespace Markcode.Core
 
             switch (s.Kind)
             {
+                case SymbolKind.Namespace:
+                    NamespaceSymbol ns = (s as NamespaceSymbol);
+                    if (ns.Locations.Any(l => l.IsInSource))
+                    {
+                        foreach (SyntaxNode node in ns.DeclaringSyntaxNodes)
+                        {
+                            text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
+                            text += "\r\n";
+                        }
+                    }
+                    else
+                    {
+                    }
+                    break;
                 case SymbolKind.NamedType:
                     NamedTypeSymbol ts = (s as NamedTypeSymbol);
                     if (ts.Locations.Any(l => l.IsInSource))
                     {
                         foreach (SyntaxNode node in ts.DeclaringSyntaxNodes)
                         {
-                            text += node.ToFullString();
+                            text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
                             text += "\r\n";
                         }
                     }
                     else
                     {
+                //        ts as ISymbol .GenerateSyntax()
+                        
                     }                    
                     break;
                 case SymbolKind.Method:
-                    MethodSymbol ms = (s as MethodSymbol);
+                    MethodSymbol ms = (s as MethodSymbol);                  
+                    
                     if (ms.Locations.Any(l => l.IsInSource))
                     {
                         foreach (SyntaxNode node in ms.DeclaringSyntaxNodes)
                         {
-                            text += node.ToFullString();
+                            text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
                             text += "\r\n";
                         }
                     }
@@ -120,10 +180,26 @@ namespace Markcode.Core
                     {
                     }                    
                     break;
+                case SymbolKind.Local:
+                    LocalSymbol ls = (s as LocalSymbol);
+                    if (ls.Locations.Any(l => l.IsInSource))
+                    {
+                        foreach (SyntaxNode node in ls.DeclaringSyntaxNodes)
+                        {
+                            text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
+                            text += "\r\n";
+                        }
+                    }
+                    else
+                    {
+                    }
+                    break;
             }
 
-            return text;
+            return GetTextSelection(text, selector, selection);
         }
+
+        
 
         public IEnumerable<string> EnumerateFiles()
         {            
@@ -143,7 +219,22 @@ namespace Markcode.Core
 
         #region Utilities
 
-        Symbol GetSymbol(string name, Symbol s)
+
+        Symbol GetSymbol(Symbol s, string name, string param)
+        {
+            foreach (Symbol c in GetSymbols(s, name))
+            {
+                if (c.Kind == SymbolKind.Method)
+                {
+                    MethodSymbol ms = c as MethodSymbol;
+                    
+                }
+            }
+
+            return null;
+        }
+
+        IEnumerable<Symbol> GetSymbols(Symbol s, string name)
         {
             if (s == null)
             {
@@ -151,7 +242,26 @@ namespace Markcode.Core
                 {
                     Compilation compilation = project.GetCompilation() as Compilation;
                     if (compilation == null) return null;
-                    Symbol c = GetSymbol(name, compilation.GlobalNamespace);
+                    IEnumerable<Symbol> c = GetSymbols(compilation.GlobalNamespace, name);
+                    if (c != null) return c;
+                }
+            }
+            else
+            {
+                return GetMembers(s).Where(m => m.Name == name);
+            }
+            return ReadOnlyArray<Symbol>.Empty.AsEnumerable();
+        }
+
+        Symbol GetSymbol(Symbol s, string name)
+        {
+            if (s == null)
+            {                
+                foreach (IProject project in _workspace.CurrentSolution.Projects)
+                {
+                    Compilation compilation = project.GetCompilation() as Compilation;
+                    if (compilation == null) return null;
+                    Symbol c = GetSymbol(compilation.GlobalNamespace, name);
                     if (c != null) return c;
                 }
             }
@@ -188,7 +298,8 @@ namespace Markcode.Core
                     break;
                 case SymbolKind.Local:
                     break;
-                case SymbolKind.Method:                    
+                case SymbolKind.Method:        
+                    //(s as MethodSymbol)
                     break;
                 case SymbolKind.NamedType:
                     l = (s as NamedTypeSymbol).GetMembers();
@@ -213,6 +324,30 @@ namespace Markcode.Core
             }
 
             return l;
+        }
+
+        private string GetTextSelection(string text, string selector, string selection)
+        {
+            switch (selector)
+            {
+                case "#":
+                    return GetTextRegion(text, selection);                    
+                case ":":
+                    return GetTextLines(text, selection);                    
+                default:
+                    return text;                    
+            }           
+        }
+
+        private string GetTextLines(string text, string selection)
+        {
+            throw new NotImplementedException();
+        }
+
+        private string GetTextRegion(string text, string selection)
+        {
+            string pattern = @"\A\Z";
+            return null;
         }
 
         #endregion

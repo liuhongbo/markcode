@@ -51,62 +51,114 @@ identifier could be namespace, type, memeber, variable etc. For example,
 
 <!---{Markcode.Core.RoslynReflection.GetText}--->
 
-            public string GetText(string fullName)
+    public string GetText(string fullName)
+    {
+        string[] names = fullName.Trim().Split('.');
+        string param = null;
+        string selector = null;
+        string selection = null;
+        if (names.Length == 0) return null;
+        string lastName = names[names.Length - 1];
+        string pattern = @"^(?<name>\w+)(\((?<params>.+)\))*((?<selector>[#:])(?<selection>.+))*\s*$";
+        Match m = Regex.Match(lastName, pattern);
+        if (m.Success)
+        {
+            if (m.Groups["name"].Success)
             {
-                string[] names = fullName.Trim().Split('.');
-                if (names.Length == 0) return null;
-                Symbol s = null;
-                foreach (string name in names)
-                {
-                    s = GetSymbol(name, s);
-                    if (s == null) return null;
-                }
-                if (s == null) return null;
-                string text = string.Empty;
-                switch (s.Kind)
-                {
-                    case SymbolKind.NamedType:
-                        NamedTypeSymbol ts = (s as NamedTypeSymbol);
-                        if (ts.Locations.Any(l => l.IsInSource))
-                        {
-                            foreach (SyntaxNode node in ts.DeclaringSyntaxNodes)
-                            {
-                                text += node.ToFullString();
-                                text += "\r\n";
-                            }
-                        }
-                        else
-                        {
-                        }                    
-                        break;
-                    case SymbolKind.Method:
-                        MethodSymbol ms = (s as MethodSymbol);
-                        if (ms.Locations.Any(l => l.IsInSource))
-                        {
-                            foreach (SyntaxNode node in ms.DeclaringSyntaxNodes)
-                            {
-                                text += node.ToFullString();
-                                text += "\r\n";
-                            }
-                        }
-                        else
-                        {
-                        }
-                        //foreach (Location location in ms.Locations)
-                        //{
-                        //    if (location.IsInSource)
-                        //    {
-                        //        text += location.SourceTree.GetText();
-                        //        text += "\r\n";
-                        //    }
-                        //    else if (location.IsInMetadata)
-                        //    {
-                        //    }
-                        //}
-                        break;
-                }
-                return text;
+                lastName = m.Groups["name"].Value;
             }
+            if (m.Groups["params"].Success)
+            {
+                param = m.Groups["params"].Value;
+            }
+            if (m.Groups["selector"].Success)
+            {
+                selector = m.Groups["selector"].Value;
+            }
+            if (m.Groups["selection"].Success)
+            {
+                selection = m.Groups["selection"].Value;
+            }
+        }
+        Symbol s = null;
+        for (int i = 0; i < names.Length - 1; i++)
+        {
+            s = GetSymbol(s, names[i]);
+            if (s == null) return null;
+        }
+        if (string.IsNullOrEmpty(param))
+        {
+            s = GetSymbol(s, names[names.Length - 1]);
+        }
+        else
+        {
+            s = GetSymbol(s, names[names.Length - 1], param);
+        }
+        if (s == null) return null;
+        string text = string.Empty;
+        switch (s.Kind)
+        {
+            case SymbolKind.Namespace:
+                NamespaceSymbol ns = (s as NamespaceSymbol);
+                if (ns.Locations.Any(l => l.IsInSource))
+                {
+                    foreach (SyntaxNode node in ns.DeclaringSyntaxNodes)
+                    {
+                        text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
+                        text += "\r\n";
+                    }
+                }
+                else
+                {
+                }
+                break;
+            case SymbolKind.NamedType:
+                NamedTypeSymbol ts = (s as NamedTypeSymbol);
+                if (ts.Locations.Any(l => l.IsInSource))
+                {
+                    foreach (SyntaxNode node in ts.DeclaringSyntaxNodes)
+                    {
+                        text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
+                        text += "\r\n";
+                    }
+                }
+                else
+                {
+                    //        ts as ISymbol .GenerateSyntax()
+                }
+                break;
+            case SymbolKind.Method:
+                MethodSymbol ms = (s as MethodSymbol);
+                string test = ms.ToDisplayString();
+                if (ms.Locations.Any(l => l.IsInSource))
+                {
+                    foreach (SyntaxNode node in ms.DeclaringSyntaxNodes)
+                    {
+                        text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
+                        text += "\r\n";
+                    }
+                }
+                else
+                {
+                }
+                break;
+            case SymbolKind.Local:
+                LocalSymbol ls = (s as LocalSymbol);
+                if (ls.Locations.Any(l => l.IsInSource))
+                {
+                    foreach (SyntaxNode node in ls.DeclaringSyntaxNodes)
+                    {
+                        text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
+                        text += "\r\n";
+                    }
+                }
+                else
+                {
+                }
+                break;
+        }
+        return text;
+    }
 
 <!---{?endmarkcode}--->
 ### 4. selection
@@ -135,19 +187,18 @@ line related links are not recommended since source code changes will most likel
 
 <!---{Markcode.Core.IMarkcodeTransform}--->
 
-        /// <summary>
-        /// markcode transform interface
-        /// </summary>
-        public interface IMarkcodeTransform
-        {
-            void TransformSolution(string searchPattern = "*");
-            void TransformDirectory(string path, string searchPattern = "*", SearchOption searchOption = SearchOption.AllDirectories);
-            void TransformFile(string path, string newPath = null);
-            string TransformLink(string link);
-            string TransformString(string s);
-            void TransformStream(StreamReader reader, StreamWriter writer); 
-            
-        }
+    /// <summary>
+    /// markcode transform interface
+    /// </summary>
+    public interface IMarkcodeTransform
+    {
+        void TransformSolution(string searchPattern = "*");
+        void TransformDirectory(string path, string searchPattern = "*", SearchOption searchOption = SearchOption.AllDirectories);
+        void TransformFile(string path, string newPath = null);
+        string TransformLink(string link);
+        string TransformString(string s);
+        void TransformStream(StreamReader reader, StreamWriter writer);
+    }
 
 <!---{?endmarkcode}--->
 
