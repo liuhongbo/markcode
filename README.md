@@ -65,7 +65,7 @@ identifier could be namespace, type, memeber, variable etc. For example,
         {
             if (m.Groups["name"].Success)
             {
-                lastName = m.Groups["name"].Value;
+                names[names.Length - 1] = m.Groups["name"].Value;
             }
             if (m.Groups["params"].Success)
             {
@@ -129,7 +129,6 @@ identifier could be namespace, type, memeber, variable etc. For example,
                 break;
             case SymbolKind.Method:
                 MethodSymbol ms = (s as MethodSymbol);
-                string test = ms.ToDisplayString();
                 if (ms.Locations.Any(l => l.IsInSource))
                 {
                     foreach (SyntaxNode node in ms.DeclaringSyntaxNodes)
@@ -157,7 +156,7 @@ identifier could be namespace, type, memeber, variable etc. For example,
                 }
                 break;
         }
-        return text;
+        return GetTextSelection(text, selector, selection);
     }
 
 <!---{?endmarkcode}--->
@@ -185,21 +184,12 @@ line related links are not recommended since source code changes will most likel
 
 ## How it works
 
-<!---{Markcode.Core.IMarkcodeTransform}--->
 
-    /// <summary>
-    /// markcode transform interface
-    /// </summary>
-    public interface IMarkcodeTransform
-    {
-        void TransformSolution(string searchPattern = "*");
-        void TransformDirectory(string path, string searchPattern = "*", SearchOption searchOption = SearchOption.AllDirectories);
-        void TransformFile(string path, string newPath = null);
-        string TransformLink(string link);
-        string TransformString(string s);
-        void TransformStream(StreamReader reader, StreamWriter writer);
-    }
+<!---{Markcode.Core.RoslynReflection#Fields}--->
+
+        IWorkspace _workspace;
+        private bool disposed = false;
+        
 
 <!---{?endmarkcode}--->
-
 [pandoc]: http://johnmacfarlane.net/pandoc/ "a universal document converter"

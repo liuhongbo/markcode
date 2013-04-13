@@ -92,7 +92,7 @@ namespace Markcode.Core
             {
                 if (m.Groups["name"].Success)
                 {
-                    lastName = m.Groups["name"].Value;
+                    names[names.Length - 1] = m.Groups["name"].Value;
                 }
 
                 if (m.Groups["params"].Success)
@@ -345,8 +345,16 @@ namespace Markcode.Core
         }
 
         private string GetTextRegion(string text, string selection)
-        {
-            string pattern = @"\A\Z";
+        {            
+            string pattern = @"#region\s+" + selection + @"(?<region>((?!#region|#endregion).)+(((?'Open'#region)((?!#region|#endregion).)*)+((?'-Open'#endregion)((?!#region|#endregion).)*)+)*(?(Open)(?!)))#endregion";
+            Match m = Regex.Match(text, pattern, RegexOptions.Singleline | RegexOptions.ExplicitCapture);
+            if (m.Success)
+            {
+                if (m.Groups["region"].Success)
+                {
+                    return m.Groups["region"].Value;
+                }
+            }
             return null;
         }
 
