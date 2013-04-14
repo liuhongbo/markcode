@@ -163,6 +163,7 @@ namespace Markcode.Core
                             skipCode = true;
                             skippingCode = false;
                             newLines.Add(@"<!---{?endmarkcode}--->");
+                            //newLines.Add(System.Environment.NewLine);
                         }
                     }
                 }

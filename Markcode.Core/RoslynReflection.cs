@@ -17,8 +17,10 @@ namespace Markcode.Core
     public class RoslynReflection : ICodeReflection
     {
         #region Fields
+     
+        private const string SELECTOR = "#";
 
-        IWorkspace _workspace;
+        private IWorkspace _workspace;
         private bool disposed = false;
 
         #endregion
@@ -36,6 +38,8 @@ namespace Markcode.Core
         }
 
         #endregion
+
+        #region IDisposable
 
         public void Dispose()
         {
@@ -66,26 +70,76 @@ namespace Markcode.Core
             }
         }
 
-        public string GetTypeText(string typeFullName)
-        {
-            return null;
-        }
+        #endregion
 
-        public string GetNamespaceText(string nsFullname)
-        {
-            return null;
-        }
+        #region ICodeReflection
 
         public string GetText(string fullName)
         {
+            string pattern = @"^(?<link>[^" + SELECTOR + @"]+)" +
+                             @"(" +
+                             SELECTOR +
+                             @"(?<selection>[^" + SELECTOR + @"]+)" +
+                             @")?$";
+
+            Match m = Regex.Match(fullName, pattern, RegexOptions.ExplicitCapture);
+            string text = null;
+            if (m.Success)
+            {
+                if (m.Groups["link"].Success)
+                {
+                    string link = m.Groups["link"].Value;                    
+
+                    if (File.Exists(link))
+                    {
+                        text = File.ReadAllText(link);
+                    }
+                    else
+                    {
+                        text = GetIdentifierText(link);
+                    }
+
+                    if (m.Groups["selection"].Success)
+                    {
+                        text = GetTextSelection(text, m.Groups["selection"].Value);
+                    }
+                }
+            }
+
+            return text;
+        }        
+
+        public IEnumerable<string> EnumerateFiles()
+        {            
+            foreach (IProject p in _workspace.CurrentSolution.Projects)
+            {
+                foreach (IDocument d in p.Documents.Where(c=>c.FilePath!=null))
+                {
+                    yield return d.FilePath;
+                }
+            }
+        }
+
+        public string GetSolutionDirectory()
+        {
+            return Path.GetDirectoryName(_workspace.CurrentSolution.FilePath);
+        }
+
+        #endregion
+
+        #region Utilities
+
+        public string GetIdentifierText(string fullName)
+        {
             string[] names = fullName.Trim().Split('.');
             string param = null;
-            string selector = null;
-            string selection = null;
+
             if (names.Length == 0) return null;
-            
+
             string lastName = names[names.Length - 1];
-            string pattern = @"^(?<name>\w+)(\((?<params>.+)\))*((?<selector>[#:])(?<selection>.+))*\s*$";
+            string pattern = @"^(?<name>\w+)" +
+                             @"(\((?<params>.+)\))*" +
+                             @"\s*$";
 
             Match m = Regex.Match(lastName, pattern);
             if (m.Success)
@@ -99,18 +153,8 @@ namespace Markcode.Core
                 {
                     param = m.Groups["params"].Value;
                 }
+            }
 
-                if (m.Groups["selector"].Success)
-                {
-                    selector = m.Groups["selector"].Value;
-                }
-
-                if (m.Groups["selection"].Success)
-                {
-                    selection = m.Groups["selection"].Value;
-                }
-            }          
-            
 
             Symbol s = null;
 
@@ -161,13 +205,13 @@ namespace Markcode.Core
                     }
                     else
                     {
-                //        ts as ISymbol .GenerateSyntax()
-                        
-                    }                    
+                        //        ts as ISymbol .GenerateSyntax()
+
+                    }
                     break;
                 case SymbolKind.Method:
-                    MethodSymbol ms = (s as MethodSymbol);                  
-                    
+                    MethodSymbol ms = (s as MethodSymbol);
+
                     if (ms.Locations.Any(l => l.IsInSource))
                     {
                         foreach (SyntaxNode node in ms.DeclaringSyntaxNodes)
@@ -178,7 +222,7 @@ namespace Markcode.Core
                     }
                     else
                     {
-                    }                    
+                    }
                     break;
                 case SymbolKind.Local:
                     LocalSymbol ls = (s as LocalSymbol);
@@ -196,29 +240,8 @@ namespace Markcode.Core
                     break;
             }
 
-            return GetTextSelection(text, selector, selection);
-        }
-
-        
-
-        public IEnumerable<string> EnumerateFiles()
-        {            
-            foreach (IProject p in _workspace.CurrentSolution.Projects)
-            {
-                foreach (IDocument d in p.Documents.Where(c=>c.FilePath!=null))
-                {
-                    yield return d.FilePath;
-                }
-            }
-        }
-
-        public string GetSolutionDirectory()
-        {
-            return Path.GetDirectoryName(_workspace.CurrentSolution.FilePath);
-        }
-
-        #region Utilities
-
+            return text;
+        }        
 
         Symbol GetSymbol(Symbol s, string name, string param)
         {
@@ -326,27 +349,77 @@ namespace Markcode.Core
             return l;
         }
 
-        private string GetTextSelection(string text, string selector, string selection)
+        private string GetTextSelection(string text, string selection)
         {
-            switch (selector)
+            string pattern = @"^\s*(?<region>\D\w+)?\s*(?<line>[0-9\s\-\>]+)?$";
+            Match m = Regex.Match(selection, pattern, RegexOptions.ExplicitCapture);
+
+            if (m.Success)
             {
-                case "#":
-                    return GetTextRegion(text, selection);                    
-                case ":":
-                    return GetTextLines(text, selection);                    
-                default:
-                    return text;                    
-            }           
+                if (m.Groups["region"].Success)
+                {
+                    text = GetTextRegion(text, m.Groups["region"].Value);
+                }
+
+                if (m.Groups["line"].Success)
+                {
+                    text = GetTextLines(text, m.Groups["line"].Value);
+                }
+            }
+            return text;    
         }
 
         private string GetTextLines(string text, string selection)
         {
-            throw new NotImplementedException();
+            string pattern = @"^\s*(?<line1>\d+)\s*(-\>\s*(?<line2>\d+)\s*)?$";
+            Match m = Regex.Match(selection, pattern, RegexOptions.ExplicitCapture);
+            int line1 = 0, line2 = 0;
+            if (m.Success)
+            {
+                if (m.Groups["line1"].Success)
+                {
+                    line1 = int.Parse(m.Groups["line1"].Value);
+                }
+
+                if (m.Groups["line2"].Success)
+                {
+                    line2 = int.Parse(m.Groups["line2"].Value);
+                }
+            }
+
+            if (line1 > 0)
+            {
+                string[] lines = text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                if (line2 > line1)
+                {
+                    if (lines.Length >= line2)
+                    {
+                        string s = string.Empty;
+                        for (int i = line1; i <= line2; i++)
+                        {
+                            if (s != string.Empty)
+                            {
+                                s += System.Environment.NewLine;
+                            }
+                            s += lines[i - 1];                            
+                        }
+                        return s;
+                    }
+                }
+                else
+                {
+                    if (lines.Length >= line1)
+                    {
+                        return lines[line1 - 1];
+                    }
+                }
+            }
+            return null;
         }
 
-        private string GetTextRegion(string text, string selection)
+        private string GetTextRegion(string text, string region)
         {            
-            string pattern = @"#region\s+" + selection + @"(?<region>((?!#region|#endregion).)+(((?'Open'#region)((?!#region|#endregion).)*)+((?'-Open'#endregion)((?!#region|#endregion).)*)+)*(?(Open)(?!)))#endregion";
+            string pattern = @"#region\s+" + region + @"(?<region>((?!#region|#endregion).)+(((?'Open'#region)((?!#region|#endregion).)*)+((?'-Open'#endregion)((?!#region|#endregion).)*)+)*(?(Open)(?!)))#endregion";
             Match m = Regex.Match(text, pattern, RegexOptions.Singleline | RegexOptions.ExplicitCapture);
             if (m.Success)
             {

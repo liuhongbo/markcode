@@ -37,17 +37,7 @@ namespace Markcode.Core
 
             }
         }
-
-        public string GetTypeText(string typeFullName)
-        {
-            return null;
-        }
-
-        public string GetNamespaceText(string nsFullname)
-        {
-            return null;
-        }
-
+        
         public string GetText(string fullName)
         {
             return null;

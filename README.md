@@ -51,115 +51,42 @@ identifier could be namespace, type, memeber, variable etc. For example,
 
 <!---{Markcode.Core.RoslynReflection.GetText}--->
 
+    #endregion
+    #region ICodeReflection
     public string GetText(string fullName)
     {
-        string[] names = fullName.Trim().Split('.');
-        string param = null;
-        string selector = null;
-        string selection = null;
-        if (names.Length == 0) return null;
-        string lastName = names[names.Length - 1];
-        string pattern = @"^(?<name>\w+)(\((?<params>.+)\))*((?<selector>[#:])(?<selection>.+))*\s*$";
-        Match m = Regex.Match(lastName, pattern);
+        string pattern = @"^(?<link>[^" + SELECTOR + @"]+)" +
+                         @"(" +
+                         SELECTOR +
+                         @"(?<selection>[^" + SELECTOR + @"]+)" +
+                         @")?$";
+        Match m = Regex.Match(fullName, pattern, RegexOptions.ExplicitCapture);
+        string text = null;
         if (m.Success)
         {
-            if (m.Groups["name"].Success)
+            if (m.Groups["link"].Success)
             {
-                names[names.Length - 1] = m.Groups["name"].Value;
-            }
-            if (m.Groups["params"].Success)
-            {
-                param = m.Groups["params"].Value;
-            }
-            if (m.Groups["selector"].Success)
-            {
-                selector = m.Groups["selector"].Value;
-            }
-            if (m.Groups["selection"].Success)
-            {
-                selection = m.Groups["selection"].Value;
-            }
-        }
-        Symbol s = null;
-        for (int i = 0; i < names.Length - 1; i++)
-        {
-            s = GetSymbol(s, names[i]);
-            if (s == null) return null;
-        }
-        if (string.IsNullOrEmpty(param))
-        {
-            s = GetSymbol(s, names[names.Length - 1]);
-        }
-        else
-        {
-            s = GetSymbol(s, names[names.Length - 1], param);
-        }
-        if (s == null) return null;
-        string text = string.Empty;
-        switch (s.Kind)
-        {
-            case SymbolKind.Namespace:
-                NamespaceSymbol ns = (s as NamespaceSymbol);
-                if (ns.Locations.Any(l => l.IsInSource))
+                string link = m.Groups["link"].Value;
+                if (File.Exists(link))
                 {
-                    foreach (SyntaxNode node in ns.DeclaringSyntaxNodes)
-                    {
-                        text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
-                        text += "\r\n";
-                    }
+                    text = File.ReadAllText(link);
                 }
                 else
                 {
+                    text = GetIdentifierText(link);
                 }
-                break;
-            case SymbolKind.NamedType:
-                NamedTypeSymbol ts = (s as NamedTypeSymbol);
-                if (ts.Locations.Any(l => l.IsInSource))
+                if (m.Groups["selection"].Success)
                 {
-                    foreach (SyntaxNode node in ts.DeclaringSyntaxNodes)
-                    {
-                        text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
-                        text += "\r\n";
-                    }
+                    text = GetTextSelection(text, m.Groups["selection"].Value);
                 }
-                else
-                {
-                    //        ts as ISymbol .GenerateSyntax()
-                }
-                break;
-            case SymbolKind.Method:
-                MethodSymbol ms = (s as MethodSymbol);
-                if (ms.Locations.Any(l => l.IsInSource))
-                {
-                    foreach (SyntaxNode node in ms.DeclaringSyntaxNodes)
-                    {
-                        text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
-                        text += "\r\n";
-                    }
-                }
-                else
-                {
-                }
-                break;
-            case SymbolKind.Local:
-                LocalSymbol ls = (s as LocalSymbol);
-                if (ls.Locations.Any(l => l.IsInSource))
-                {
-                    foreach (SyntaxNode node in ls.DeclaringSyntaxNodes)
-                    {
-                        text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
-                        text += "\r\n";
-                    }
-                }
-                else
-                {
-                }
-                break;
+            }
         }
-        return GetTextSelection(text, selector, selection);
+        return text;
     }
 
 <!---{?endmarkcode}--->
+
+
 ### 4. selection
 
 selection is used to select part of the souce code.
@@ -168,17 +95,21 @@ selection is used to select part of the souce code.
 
     <!--- {markcode-link#region} --->
 
-you can use region to select part of the code. region selection can be used with file link or identifier link.
+In c sharp, region lets you specify a block of code. You can use region to select part of the source code. Region selection can be used with file link or identifier link. 
 
 ### 4.2. line selection
 
-    <!---{markcode-link:line}--->
+    <!---{markcode-link#line}--->
+
+Use line selection to select 1 line of souce. Line selection can be used with file link or identifier link. When used with identifier link, the line number is a relative number to the beginning of the code block. it is not the line number of that source file. The first line is line 1.
 
 ### 4.3. line range selection
 
-    <!---{markcode-link:line1 line2}--->
+    <!---{markcode-link#line1->line2}--->
 
-line related links are not recommended since source code changes will most likely break the links. 
+Use line range selection to select multiple lines of soure code. Line range selection can be used with file link or identifier link. When used with identifier link, the line number is a relative number to the beginning of the code block. It is not the line number of that source file. The first line is line 1.
+
+Line related selections are not recommended since source code changes will most likely break the links.
 
 ## Markcode command tool
 
@@ -187,9 +118,51 @@ line related links are not recommended since source code changes will most likel
 
 <!---{Markcode.Core.RoslynReflection#Fields}--->
 
-        IWorkspace _workspace;
+        private const string SELECTOR = "#";
+        private IWorkspace _workspace;
         private bool disposed = false;
         
+
+<!---{?endmarkcode}--->
+
+<!---{Markcode.Core.RoslynReflection.GetTextLines#3->6}--->
+
+        string pattern = @"^\s*(?<line1>\d+)\s*(-\>\s*(?<line2>\d+)\s*)?$";
+        Match m = Regex.Match(selection, pattern, RegexOptions.ExplicitCapture);
+        int line1 = 0, line2 = 0;
+        if (m.Success)
+
+<!---{?endmarkcode}--->
+
+
+<!---{Markcode.Core.RoslynReflection.GetTextLines#8}--->
+
+            if (m.Groups["line1"].Success)
+
+<!---{?endmarkcode}--->
+
+<!---{Markcode.Core.RoslynReflection#Utilities 1->20}--->
+
+        public string GetIdentifierText(string fullName)
+        {
+            string[] names = fullName.Trim().Split('.');
+            string param = null;
+            if (names.Length == 0) return null;
+            string lastName = names[names.Length - 1];
+            string pattern = @"^(?<name>\w+)" +
+                             @"(\((?<params>.+)\))*" +
+                             @"\s*$";
+            Match m = Regex.Match(lastName, pattern);
+            if (m.Success)
+            {
+                if (m.Groups["name"].Success)
+                {
+                    names[names.Length - 1] = m.Groups["name"].Value;
+                }
+                if (m.Groups["params"].Success)
+                {
+                    param = m.Groups["params"].Value;
+                }
 
 <!---{?endmarkcode}--->
 [pandoc]: http://johnmacfarlane.net/pandoc/ "a universal document converter"
