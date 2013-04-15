@@ -18,6 +18,7 @@ namespace Markcode
             string solutionFileName = null;
             string searchPattern = "*";
             string transformDirectory = null;
+            string currentDirectory = null;
             bool allDirectories = false;
             bool showHelp = false;
 
@@ -28,6 +29,7 @@ namespace Markcode
                 {"s=","the {SOLUTION} that contains the source code. If not provided, will search the default solution file",(string v)=>solutionFileName=v},
                 {"d=","the {DIRECTORY} where the wiki document files located. If not provided, will tranform the files in the solution.",v=>transformDirectory = v},
                 {"p=","the search {PATTERN} that used to filter the wiki document files",v=>searchPattern=v},
+                {"c=","the {CURRENT DIRECTORY} used to resolve the relative file path link in the wiki documents.", v=>currentDirectory = v},
                 {"a","search all the directoires",v=>allDirectories=(v!=null)},
                 {"h|help","show this message and exit", v=>showHelp=(v!=null)}
             };
@@ -65,6 +67,14 @@ namespace Markcode
 
             using (ICodeReflection r = new RoslynReflection(solutionFileName))
             {
+                if (currentDirectory != null)
+                {
+                    Directory.SetCurrentDirectory(currentDirectory);
+                }
+                else
+                {
+                    Directory.SetCurrentDirectory(r.GetSolutionDirectory());
+                }
                 IMarkcodeTransform markcode = new MarkcodeTransform(r);
                 if (string.IsNullOrEmpty(transformDirectory))
                 {
