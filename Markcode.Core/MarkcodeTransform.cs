@@ -58,6 +58,7 @@ namespace Markcode.Core
             bool transformed = false;
             bool skipCode = false;
             bool skippingCode = false;
+            bool endMarkcode = false;
 
             foreach (string line in File.ReadLines(path))
             {
@@ -72,7 +73,7 @@ namespace Markcode.Core
                             {
                                 if (Regex.IsMatch(line, @"^<!-{2,}.*\{\?endmarkcode\}.*-{2,}>$"))
                                 {
-                                    skipCode = false;
+                                    skipCode = false;                                    
                                     continue;
                                 }
                                 else if (line != string.Empty)
@@ -106,11 +107,19 @@ namespace Markcode.Core
                                 }
                             }
                             break;
-                    }                    
+                    }
                 }
 
                 if (!skipCode)
                 {
+                    if (endMarkcode) // make sure there is empty line after endmarkcode
+                    {
+                        if (line != string.Empty)
+                        {
+                            newLines.Add("");
+                        }
+                        endMarkcode = false;
+                    }
                     newLines.Add(line);
 
                     Match m = r.Match(line);
@@ -118,6 +127,7 @@ namespace Markcode.Core
                     {
                         string link = m.Groups[1].Value;
                         string codeText = TransformLink(link);
+                        //normalize here?
                         if (!string.IsNullOrEmpty(codeText))
                         {
                             switch (ext)
@@ -163,7 +173,7 @@ namespace Markcode.Core
                             skipCode = true;
                             skippingCode = false;
                             newLines.Add(@"<!---{?endmarkcode}--->");
-                            //newLines.Add(System.Environment.NewLine);
+                            endMarkcode = true;
                         }
                     }
                 }
