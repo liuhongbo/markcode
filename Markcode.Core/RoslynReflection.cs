@@ -21,6 +21,8 @@ namespace Markcode.Core
         private const string SELECTOR = "#";
 
         private IWorkspace _workspace;
+        private Compilation _currentCompilation;
+
         private bool disposed = false;
 
         #endregion
@@ -141,7 +143,7 @@ namespace Markcode.Core
                              @"(\((?<params>.+)\))*" +
                              @"\s*$";
 
-            Match m = Regex.Match(lastName, pattern);
+            Match m = Regex.Match(lastName, pattern, RegexOptions.ExplicitCapture);
             if (m.Success)
             {
                 if (m.Groups["name"].Success)
@@ -245,16 +247,27 @@ namespace Markcode.Core
 
         Symbol GetSymbol(Symbol s, string name, string param)
         {
-            foreach (Symbol c in GetSymbols(s, name))
-            {
-                if (c.Kind == SymbolKind.Method)
-                {
-                    MethodSymbol ms = c as MethodSymbol;
-                    
-                }
-            }
+            string typeName = "_"+ Guid.NewGuid().ToString().Replace("-","");
+            string ns = s.ContainingSymbol.ToString();
+            SyntaxTree tree = SyntaxTree.ParseText(@"namespace " + ns  +  "{ " +
+                                                        " class " + typeName + " { " + 
+                                                            "void " + name + "(" + param + "){} " +
+                                                        "}" +
+                                                    "}");
+            if (_currentCompilation == null) return null;
 
-            return null;
+            Compilation compilation = Compilation.Create("method")
+                                                 .AddReferences(_currentCompilation.References)
+                                                 .AddSyntaxTrees(_currentCompilation.SyntaxTrees.AsEnumerable())
+                                                 .AddSyntaxTrees(tree);
+
+            Symbol s0 = compilation.GetTypeByMetadataName(ns + "." + typeName);
+            
+            s0 = GetSymbol(s0, name);
+
+            string displayString = s0.ToDisplayString().Replace(typeName,s.Name);
+
+            return GetSymbols(s, name).FirstOrDefault(c => (c.Kind == SymbolKind.Method) && (c.ToDisplayString() == displayString));
         }
 
         IEnumerable<Symbol> GetSymbols(Symbol s, string name)
@@ -265,6 +278,7 @@ namespace Markcode.Core
                 {
                     Compilation compilation = project.GetCompilation() as Compilation;
                     if (compilation == null) return null;
+                    _currentCompilation = compilation;
                     IEnumerable<Symbol> c = GetSymbols(compilation.GlobalNamespace, name);
                     if (c != null) return c;
                 }
@@ -279,11 +293,12 @@ namespace Markcode.Core
         Symbol GetSymbol(Symbol s, string name)
         {
             if (s == null)
-            {                
+            {   
                 foreach (IProject project in _workspace.CurrentSolution.Projects)
                 {
                     Compilation compilation = project.GetCompilation() as Compilation;
                     if (compilation == null) return null;
+                    _currentCompilation = compilation;
                     Symbol c = GetSymbol(compilation.GlobalNamespace, name);
                     if (c != null) return c;
                 }
