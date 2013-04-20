@@ -19,11 +19,11 @@ namespace Markcode
             string searchPattern = "*";
             string transformDirectory = null;
             string currentDirectory = null;
-            bool allDirectories = false;
+            bool allDirectories = true;
             bool showHelp = false;
 
             Console.WriteLine("markcode v0.1");
-
+            Console.WriteLine("Current Directory: " + Directory.GetCurrentDirectory());
             var p = new OptionSet()
             {
                 {"s=","the {SOLUTION} that contains the source code. If not provided, will search the default solution file",(string v)=>solutionFileName=v},
@@ -64,17 +64,24 @@ namespace Markcode
                 Console.WriteLine("Try `markcode --help' for more information.");
                 return;
             }
+            else
+            {
+                Console.WriteLine("Use solution file " + solutionFileName);
+            }
 
             using (ICodeReflection r = new RoslynReflection(solutionFileName))
             {
                 if (currentDirectory != null)
                 {
+                    Console.WriteLine("Set Current Directory to: " + currentDirectory);
                     Directory.SetCurrentDirectory(currentDirectory);
                 }
                 else
                 {
+                    Console.WriteLine("Set Current Directory to: " + r.GetSolutionDirectory());
                     Directory.SetCurrentDirectory(r.GetSolutionDirectory());
                 }
+                Console.WriteLine("Start transform...");
                 IMarkcodeTransform markcode = new MarkcodeTransform(r);
                 if (string.IsNullOrEmpty(transformDirectory))
                 {
@@ -82,8 +89,10 @@ namespace Markcode
                 }
                 else
                 {
+                    Console.WriteLine("Transform Directory :" + transformDirectory);
                     markcode.TransformDirectory(transformDirectory, searchPattern, allDirectories?SearchOption.AllDirectories: SearchOption.TopDirectoryOnly);
-                }                
+                }
+                Console.WriteLine("Transform finished.");
             }
         }
 
@@ -100,11 +109,12 @@ namespace Markcode
             {
 
                 defaultSolutionFile = Directory.GetFiles(s, "*." + SolutionFileNameExtension, SearchOption.TopDirectoryOnly).FirstOrDefault();
-                if (string.IsNullOrEmpty(defaultSolutionFile))
+                if (!string.IsNullOrEmpty(defaultSolutionFile))
                 {
                     break;
                 }
             }
+            
             return defaultSolutionFile;
         }
 

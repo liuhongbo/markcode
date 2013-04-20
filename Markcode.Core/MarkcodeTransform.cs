@@ -36,6 +36,8 @@ namespace Markcode.Core
         
         public void TransformDirectory(string path, string searchPattern = "*", SearchOption searchOption = SearchOption.AllDirectories)
         {
+            Console.WriteLine("Start transform dirctory " + path + " ...");
+
             foreach (string file in Directory.EnumerateFiles(path, searchPattern, searchOption))
             {
                 TransformFile(file);
@@ -44,6 +46,8 @@ namespace Markcode.Core
 
         public void TransformFile(string path, string newPath = null)
         {
+            Console.WriteLine("Start transform file " + path + " ...");
+
             if (string.IsNullOrEmpty(path))
                 throw new ArgumentNullException(path);
 
@@ -195,16 +199,7 @@ namespace Markcode.Core
         public string TransformLink(string link)
         {
             return _reflector.GetText(link);
-        }
-
-        public string TransformString(string s)
-        {
-            return null;
-        }
-
-        public void TransformStream(StreamReader reader, StreamWriter writer)
-        {
-        }
+        }        
 
         #region Utilities
 

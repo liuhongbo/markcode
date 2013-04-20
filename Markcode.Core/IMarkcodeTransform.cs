@@ -15,9 +15,6 @@ namespace Markcode.Core
         void TransformSolution(string searchPattern = "*");
         void TransformDirectory(string path, string searchPattern = "*", SearchOption searchOption = SearchOption.AllDirectories);
         void TransformFile(string path, string newPath = null);
-        string TransformLink(string link);
-        string TransformString(string s);
-        void TransformStream(StreamReader reader, StreamWriter writer); 
-        
+        string TransformLink(string link);        
     }
 }

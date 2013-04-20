@@ -22,6 +22,7 @@ namespace Markcode.Core
 
         private IWorkspace _workspace;
         private Compilation _currentCompilation;
+        private IEnumerable<Compilation> _compilations;
 
         private bool disposed = false;
 
@@ -29,14 +30,24 @@ namespace Markcode.Core
 
         #region Ctor
 
-        public RoslynReflection(string solutionFileName)
-        {
-            _workspace = Workspace.LoadSolution(solutionFileName);             
+        public RoslynReflection(string solutionFileName) : this(Workspace.LoadSolution(solutionFileName))
+        {            
         }
 
         public RoslynReflection(IWorkspace workspace)
         {
             _workspace = workspace;
+            _compilations = new List<Compilation>();
+
+            foreach (IProject project in _workspace.CurrentSolution.Projects)
+            {
+                Compilation compilation = project.GetCompilation() as Compilation;
+                if (compilation != null)
+                {
+                    (_compilations as List<Compilation>).Add(compilation);
+                }
+            }
+
         }
 
         #endregion
@@ -157,25 +168,33 @@ namespace Markcode.Core
                 }
             }
 
-
             Symbol s = null;
 
-            for (int i = 0; i < names.Length - 1; i++)
+            foreach (Compilation c in _compilations)
             {
-                s = GetSymbol(s, names[i]);
-                if (s == null) return null;
+                s = c.GlobalNamespace;
+                _currentCompilation = c;
+                for (int i = 0; i < names.Length - 1; i++)
+                {
+                    s = GetSymbol(s, names[i]);
+                    if (s == null) break;
+                }
+
+                if (s == null) continue;
+
+                if (string.IsNullOrEmpty(param))
+                {
+                    s = GetSymbol(s, names[names.Length - 1]);
+                }
+                else
+                {
+                    s = GetSymbol(s, names[names.Length - 1], param);
+                }
+
+                if (s != null) break;
             }
 
-            if (string.IsNullOrEmpty(param))
-            {
-                s = GetSymbol(s, names[names.Length - 1]);
-            }
-            else
-            {
-                s = GetSymbol(s, names[names.Length - 1], param);
-            }
-
-            if (s == null) return null;
+            if (s == null) return null;            
 
             string text = string.Empty;
 
@@ -271,43 +290,13 @@ namespace Markcode.Core
         }
 
         IEnumerable<Symbol> GetSymbols(Symbol s, string name)
-        {
-            if (s == null)
-            {
-                foreach (IProject project in _workspace.CurrentSolution.Projects)
-                {
-                    Compilation compilation = project.GetCompilation() as Compilation;
-                    if (compilation == null) return null;
-                    _currentCompilation = compilation;
-                    IEnumerable<Symbol> c = GetSymbols(compilation.GlobalNamespace, name);
-                    if (c != null) return c;
-                }
-            }
-            else
-            {
-                return GetMembers(s).Where(m => m.Name == name);
-            }
-            return ReadOnlyArray<Symbol>.Empty.AsEnumerable();
+        {            
+             return GetMembers(s).Where(m => m.Name == name);           
         }
 
         Symbol GetSymbol(Symbol s, string name)
-        {
-            if (s == null)
-            {   
-                foreach (IProject project in _workspace.CurrentSolution.Projects)
-                {
-                    Compilation compilation = project.GetCompilation() as Compilation;
-                    if (compilation == null) return null;
-                    _currentCompilation = compilation;
-                    Symbol c = GetSymbol(compilation.GlobalNamespace, name);
-                    if (c != null) return c;
-                }
-            }
-            else
-            {
-                return GetMembers(s).FirstOrDefault(m => m.Name == name);                
-            }
-            return null;
+        {           
+            return GetMembers(s).FirstOrDefault(m => m.Name == name); 
         }
 
         static ReadOnlyArray<Symbol> GetMembers(Symbol s)

@@ -166,6 +166,7 @@ It will only insert the region block code 'Fields' in the class Markcode.Core.Ro
         private const string SELECTOR = "#";
         private IWorkspace _workspace;
         private Compilation _currentCompilation;
+        private IEnumerable<Compilation> _compilations;
         private bool disposed = false;
         
 
