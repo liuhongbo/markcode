@@ -217,9 +217,34 @@ It will insert the lines from 1 to 10 of class Markcode.Core.RoslynReflection.
 
 ## Markcode command tool
 
+### Usage
 
+	Usage: markcode [-s solution-filename] [-d wiki-file-directory] [-p search-patte
+	rn] [-a] [-h|help]
+	Options:
+	  -s=SOLUTION                the SOLUTION that contains the source code. If not
+								   provided, will search the default solution file
+	  -d=DIRECTORY               the DIRECTORY where the wiki document files
+								   located. If not provided, will tranform the
+								   files in the solution.
+	  -p=PATTERN                 the search PATTERN that used to filter the wiki
+								   document files
+	  -c=CURRENT DIRECTORY       the CURRENT DIRECTORY used to resolve the relative
+								   file path link in the wiki documents.
+	  -a                         search all the directoires
+	  -h, --help                 show this message and exit
+
+### Add Markcode to the Visual Studio as an External Tool
+
+For example:
+
+
+
+## Markcode Visual Studio Addin
 
 ## How it works
 
+This c# implementation of markcode uses Microsoft Rosyln project to reflect the source code of the solution. For more information about Rosyln project, click [here][Rosyln]
 
 [pandoc]: http://johnmacfarlane.net/pandoc/ "a universal document converter"
+[Rosyln]: http://msdn.microsoft.com/en-us/vstudio/roslyn.aspx  "exposing the Microsoft C# and Visual Basic .NET compilers as services"

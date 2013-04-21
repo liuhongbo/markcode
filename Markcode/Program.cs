@@ -19,11 +19,11 @@ namespace Markcode
             string searchPattern = "*";
             string transformDirectory = null;
             string currentDirectory = null;
-            bool allDirectories = true;
+            bool allDirectories = false;
             bool showHelp = false;
 
             Console.WriteLine("markcode v0.1");
-            Console.WriteLine("Current Directory: " + Directory.GetCurrentDirectory());
+            
             var p = new OptionSet()
             {
                 {"s=","the {SOLUTION} that contains the source code. If not provided, will search the default solution file",(string v)=>solutionFileName=v},
@@ -52,6 +52,9 @@ namespace Markcode
                 ShowHelp(p);
                 return;
             }
+            
+            Console.WriteLine("Initial Current Directory: " + Directory.GetCurrentDirectory());
+
             if (string.IsNullOrEmpty(solutionFileName))
             {
                 solutionFileName = GetDefaultSolutionFile();
