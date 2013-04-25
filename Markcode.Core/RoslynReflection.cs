@@ -206,7 +206,7 @@ namespace Markcode.Core
                     {
                         foreach (SyntaxNode node in ns.DeclaringSyntaxNodes)
                         {
-                            text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
+                            text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToString();
                             text += "\r\n";
                         }
                     }
@@ -220,7 +220,7 @@ namespace Markcode.Core
                     {
                         foreach (SyntaxNode node in ts.DeclaringSyntaxNodes)
                         {
-                            text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
+                            text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToString();
                             text += "\r\n";
                         }
                     }
@@ -237,7 +237,7 @@ namespace Markcode.Core
                     {
                         foreach (SyntaxNode node in ms.DeclaringSyntaxNodes)
                         {
-                            text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
+                            text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToString();
                             text += "\r\n";
                         }
                     }
@@ -251,7 +251,7 @@ namespace Markcode.Core
                     {
                         foreach (SyntaxNode node in ls.DeclaringSyntaxNodes)
                         {
-                            text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToFullString();
+                            text += node.Format(FormattingOptions.GetDefaultOptions()).GetFormattedRoot().ToString();
                             text += "\r\n";
                         }
                     }
